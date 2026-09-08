@@ -1,4 +1,4 @@
-# Python $B Unistroke Recognizer
+# Python $M Mid-Air Gesture Recognizer
 # 
 # This file contains a Python implementation of the $M algorithm.
 # The material used can be found online at: [TO BE ADDED]
@@ -12,29 +12,6 @@
 #
 # Copyright (C) 2024, Anonymous
 # All rights reserved. Last updated April 20, 2024.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#    * Redistributions of source code must retain the above copyright
-#      notice, this list of conditions and the following disclaimer.
-#    * Redistributions in binary form must reproduce the above copyright
-#      notice, this list of conditions and the following disclaimer in the
-#      documentation and/or other materials provided with the distribution.
-#    * Neither the names of the University of Washington nor Microsoft,
-#      nor the names of its contributors may be used to endorse or promote
-#      products derived from this software without specific prior written
-#      permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
-# IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Jacob O. Wobbrock OR Andrew D. Wilson
-# OR Yang Li BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-# OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from math import pi, atan2, cos, sin, inf
 
@@ -52,7 +29,6 @@ ANGLE_RANGE = (2 / 180) * pi
 ANGLE_PRECISION = (2 / 180) * pi
 PHI = 0.5 * (-1.0 + (5.0)**0.5)
 N_PC = 50
-
 
 class Mdollar:
     """
@@ -119,78 +95,58 @@ class Stroke:
     def resample(self):
         points = self.points
 
-        # N = len(points) # length of original data
+        N = len(points) # length of original data
 
-        # # get old x
-        # old_x = [0]
-        # for ix in range(1,N):
-        #     old_x.extend([ix])
+        # get old x
+        old_x = [0]
+        for ix in range(1,N):
+            old_x.extend([ix])
 
-        # # get new x 
-        # new_x = [0]
-        # for ix in range(1,RESAMPLE_SIZE):
-        #     new_x.extend([ix/(RESAMPLE_SIZE-1)*(N-1)])
+        # get new x 
+        new_x = [0]
+        for ix in range(1,RESAMPLE_SIZE):
+            new_x.extend([ix/(RESAMPLE_SIZE-1)*(N-1)])
 
-        # new_points = [points[0]] # add first point
-        # ix = 0
-        # for x in new_x[1:-1]:
-        #     # find closest old_x that has new_x 
-        #     while old_x[ix] < x:
-        #         ix += 1
-        #     y1,y2 = points[ix-1],points[ix]
-        #     x1,x2 = old_x[ix-1],old_x[ix]
-        #     # interpolate between the two old points
-        #     m = (y2-y1)/(x2-x1)
-        #     b = y2 - m*x2
-        #     new_point = m*x + b
-        #     new_points.extend([new_point])
-        # new_points.extend([points[-1]]) # add last point
-        # self.points = new_points
-        # self.biosignals[self.btype][self.channel] = self.points
-
-        # # OLD HACK WITH NUMPY 
-        N_init = len(points)
-        x = np.linspace(0,N_init-1,RESAMPLE_SIZE)# x coordinates at which to evaluate interpolated values
-        xp = np.linspace(0,N_init-1,N_init)# x coordinates of data points
-        self.points = np.interp(x,xp,points)#new_points
+        new_points = [points[0]] # add first point
+        ix = 0
+        for x in new_x[1:-1]:
+            # find closest old_x that has new_x 
+            while old_x[ix] < x:
+                ix += 1
+            y1,y2 = points[ix-1],points[ix]
+            x1,x2 = old_x[ix-1],old_x[ix]
+            # interpolate between the two old points
+            m = (y2-y1)/(x2-x1)
+            b = y2 - m*x2
+            new_point = m*x + b
+            new_points.extend([new_point])
+        new_points.extend([points[-1]]) # add last point
+        self.points = new_points
         self.biosignals[self.btype][self.channel] = self.points
 
     def demean(self):
-        # # calculate mean of entire dataset
-        # mean_points = 0
-        # for p in self.points:
-        #     mean_points += p
-        # mean_points = mean_points / len(self.points)
-        # new_points = [x - mean_points for x in self.points]
-        # self.points = new_points
-        # self.biosignals[self.btype][self.channel] = self.points 
-
-        # speed up with numpy
-        new_points = self.points - np.mean(self.points)
+        # calculate mean of entire dataset
+        mean_points = 0
+        for p in self.points:
+            mean_points += p
+        mean_points = mean_points / len(self.points)
+        new_points = [x - mean_points for x in self.points]
         self.points = new_points
         self.biosignals[self.btype][self.channel] = self.points 
 
     def scale_to(self):
-        # new_points = []
+        new_points = []
 
-        # for p in self.points:
-        #     new_points.append(
-        #         p / self.std # TODO not sure if this is the correct order
-        #     )
-        # self.points = new_points
-        # self.biosignals[self.btype][self.channel] = self.points
-
-        # speed up with numpy
-        new_points = self.points / self.std
+        for p in self.points:
+            new_points.append(
+                p / self.std # TODO not sure if this is the correct order
+            )
         self.points = new_points
         self.biosignals[self.btype][self.channel] = self.points
 
     def path_distance(self, points):
-        # n = len(points)
-        # return sum([distance(self.points[i], points[i]) / n for i in range(n)])
-
-        # speed up with numpy
-        return np.mean((abs(np.asarray(self.points) - np.asarray(points))))
+        n = len(points)
+        return sum([distance(self.points[i], points[i]) / n for i in range(n)])
     
     def apply_pca(self,N_PC,pca=None):
         if len(self.biosignals) > 1:
@@ -203,7 +159,6 @@ class Stroke:
         if pca is None:
             pca = get_pca(self.biosignals,N_PC)
 
-        # ( 64 x 88 ) x ( 88 x 50 ) 
         self.transformed_biosignals = np.matmul(np.asarray(points).T, pca) 
         return pca
 
@@ -225,72 +180,42 @@ def get_pca(data,N_PC):
             points += data[ix] #+ self.biosignals[1]
     else:
         points = data[0]
-    # points = data[0] + data[1] # 88 features x 64 time points
-    # OLD PCA
-    pca = PCA(n_components=N_PC)
-    # new_points = pca.fit_transform(np.asarray(points).T)
-    pca.fit(np.asarray(points).T)
-    X_pca = pca.components_.T # 88 x 50
-    # print(X_pca.shape)
-    return X_pca
 
-    # points = data[0] + data[1] # 88 features x 64 time points
-    # N_time = len(points[0]) # N_time = 64 timepoints
-    # N_feat = len(points) # N_feat = 88 features
-    # # THE ACTUAL PCA
-    # # 1) calculate covariance matrix for standardized data
-    # covariance_matrix = np.cov(np.asarray(points).T, ddof = 1, rowvar = False) # OLD 
-    # covs = []
-    # for j in range(N_feat):
-    #     covariance = []
-    #     for k in range(N_feat):
-    #         total_sum = 0
-    #         for i in range(N_time):
-    #             total_sum += points[j][i] * points[k][i]
-    #         covariance.extend([total_sum / (N_time-1)])
-    #     covs.append(covariance)
+    points = data[0] + data[1] 
+    N_time = len(points[0]) 
+    N_feat = len(points) 
+    
+    # THE ACTUAL PCA
+    # 1) calculate covariance matrix for standardized data
+    covariance_matrix = np.cov(np.asarray(points).T, ddof = 1, rowvar = False) # OLD 
+    covs = []
+    for j in range(N_feat):
+        covariance = []
+        for k in range(N_feat):
+            total_sum = 0
+            for i in range(N_time):
+                total_sum += points[j][i] * points[k][i]
+            covariance.extend([total_sum / (N_time-1)])
+        covs.append(covariance)
 
-    # # 2) eigenvalue decomposition -- can't really change this 
-    # eigenvalues, eigenvectors = np.linalg.eig(covs)
+    # 2) eigenvalue decomposition -- can't really change this 
+    eigenvalues, eigenvectors = np.linalg.eig(covs)
 
-    # # 3) sort principal components
-    # # np.argsort can only provide lowest to highest; use [::-1] to reverse the list
-    # order_of_importance = np.argsort(eigenvalues)[::-1]#.tolist()  # DELETE THIS LATER
+    # 3) sort principal components
+    # np.argsort can only provide lowest to highest; use [::-1] to reverse the list
+    order_of_importance = np.argsort(eigenvalues)[::-1]
 
-    # """
-    # This section doesn't work
-    # # depending on type of eig function covariance matrix should all have positive real eigenvalues
-    # # eigs = []
-    # # for eig in eigenvalues:
-    # #     eigs.append(eig.real)
-    # # eigenvalues = deepcopy(eigs)
-    # # order_of_importance = np.argsort(eigs)[::-1]  # DELETE THIS LATER
-    # # order_of_importance = []
-    # # highest = eigs[0]
-    # # while len(eigs) > 0:
-    # #     for eig in eigs:
-    # #         if eig >=highest:
-    # #             highest = eig
-    # #     order_of_importance.append(eigenvalues.index(highest))
-    # #     eigs.remove(highest)
-    # #     if len(eigs) > 1:
-    # #         highest = eigs[0]
-    # # # print(type(order_of_importance),type(order_of_importance1))
-    # # print(np.allclose(order_of_importance,order_of_importance1))
-    # # print(order_of_importance[-10:],order_of_importance1[-10:])
-    # """
+    # utilize the sort order to sort eigenvalues and eigenvectors
+    sorted_eigenvalues = eigenvalues[order_of_importance]
+    sorted_eigenvectors = eigenvectors[:,order_of_importance] # sort the columns
 
-    # # utilize the sort order to sort eigenvalues and eigenvectors
-    # sorted_eigenvalues = eigenvalues[order_of_importance]
-    # sorted_eigenvectors = eigenvectors[:,order_of_importance] # sort the columns
+    # 4) calculate explained variance
+    # use sorted_eigenvalues to ensure the explained variances correspond to the eigenvectors
+    explained_variance = sorted_eigenvalues / np.sum(sorted_eigenvalues)
+    # # 5) reduce data via principal components
+    # new_biosignals = np.matmul(np.asarray(points).T, sorted_eigenvectors[:,:N_PC]) # transform the original data
 
-    # # 4) calculate explained variance
-    # # use sorted_eigenvalues to ensure the explained variances correspond to the eigenvectors
-    # explained_variance = sorted_eigenvalues / np.sum(sorted_eigenvalues)
-    # # # 5) reduce data via principal components
-    # # new_biosignals = np.matmul(np.asarray(points).T, sorted_eigenvectors[:,:N_PC]) # transform the original data
-
-    # # # 6) determine explained variance
-    # # total_explained_variance = sum(explained_variance[:N_PC])
-    # print(sorted_eigenvectors[:,:N_PC].shape) # 88 x 50
-    # return sorted_eigenvectors[:,:N_PC]
+    # # 6) determine explained variance
+    # total_explained_variance = sum(explained_variance[:N_PC])
+    print(sorted_eigenvectors[:,:N_PC].shape) # 88 x 50
+    return sorted_eigenvectors[:,:N_PC]
